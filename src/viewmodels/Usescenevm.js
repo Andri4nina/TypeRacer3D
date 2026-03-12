@@ -5,11 +5,6 @@ import { buildWorld, ExhaustSystem, lerp, getLaneX } from "../services/SceneServ
 import { loadCarModel } from "../views/lobby/CarSelector";
 import { GAME_MODES ,BOT_DEFS, TRACK_LENGTH, DEFAULT_CAR_ID} from "../constants/Index";
 
-/**
- * ViewModel — 3-D scene.
- * Loads player car via CarLoaderService (supports GLB + procedural fallback).
- * Bots always use the procedural fallback with their own colour.
- */
 export function useSceneVM({
   mountRef, mode, players, playerName, playerCarModelId,
   progressRef, finishedRef,

@@ -1,7 +1,8 @@
 import { CAR_MODELS } from "../../constants/Index";
 import { Input } from "./Input";
 import { CarSelector } from "../lobby/CarSelector";
-import { ColorPicker } from "./colorPicker";
+import { ColorPicker } from "./ColorPicker";
+
 
 export function PlayerSetup({ name, color, colors, carModelId, onNameChange, onColorChange, onCarChange }) {
   const selectedCar = CAR_MODELS.find(m => m.id === carModelId);
