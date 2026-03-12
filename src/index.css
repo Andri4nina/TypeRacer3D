@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Jaro&family=Tektur&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* THEME */
+@theme {
+  --color-primary: #F92C44;
+  --color-secondary: #a1c4fd;
+  --color-text: #202D3A;
+  --color-succes: #5ba574;
+  --color-danger: #d96a6a;
+  --color-warning: #e5b567;
+  --color-light: #e3edf7;
+
+  --font-title: "Jaro", sans-serif;
+  --font-text: "Tektur", sans-serif;
+
+  --color-linear-gray-start: #EEF9FF;
+  --color-linear-gray-end: #D8E1EB;
+}
+
+/* DARK MODE */
+.dark {
+  --color-text: #cbd5e1;
+  --color-light: #1e293b;
+}
+
+/* ===================== */
+/* UTILITIES CUSTOM CSS  */
+/* ===================== */
+
+@layer utilities {
+
+  /* Glow du soleil */
+  .drop-shadow-glow {
+    filter: drop-shadow(0 0 8px rgba(255, 200, 0, 0.8));
+  }
+
+  /* Animations */
+  .animate-spin-slow {
+    animation: spin-slow 6s linear infinite;
+  }
+
+  .animate-moon {
+    animation: moonPop 0.4s ease-out;
+  }
+
+  .animate-particle-1 { animation: particle-1 0.6s ease-out infinite; }
+  .animate-particle-2 { animation: particle-2 0.6s ease-out infinite; }
+  .animate-particle-3 { animation: particle-3 0.6s ease-out infinite; }
+  .animate-particle-4 { animation: particle-4 0.6s ease-out infinite; }
+  .animate-particle-5 { animation: particle-5 0.6s ease-out infinite; }
+  .animate-particle-6 { animation: particle-6 0.6s ease-out infinite; }
+
+}
+
+/* ===================== */
+/* KEYFRAMES             */
+/* ===================== */
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes moonPop {
+  0% { opacity: 0; transform: scale(0.7); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Les particules partent dans 6 directions */
+@keyframes particle-1 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(10px, -4px) scale(0); }
+}
+
+@keyframes particle-2 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(8px, 6px) scale(0); }
+}
+
+@keyframes particle-3 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(-8px, 5px) scale(0); }
+}
+
+@keyframes particle-4 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(-10px, -4px) scale(0); }
+}
+
+@keyframes particle-5 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(5px, -10px) scale(0); }
+}
+
+@keyframes particle-6 {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(-5px, -10px) scale(0); }
+}
+
+
+/* ===================== */
+/* GLOBALS               */
+/* ===================== */
+
+* {
+  scroll-behavior: smooth;
+  outline: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 0.5rem;
+  background-color: #0004;
+  visibility: hidden;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  visibility: visible;
+}
+
+
+.inner-shadow-dark {
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.1),
+    inset 0 8px 16px 0 rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.inner-shadow-light {
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(255, 255, 255, 0.1),
+    inset 0 8px 16px 0 rgba(255, 255, 255, 0.05),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .inner-shadow-dark {
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(0, 0, 0, 0.3),
+    inset 0 8px 16px 0 rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .inner-shadow-light {
+  box-shadow: 
+    inset 0 2px 4px 0 rgba(255, 255, 255, 0.1),
+    inset 0 8px 16px 0 rgba(255, 255, 255, 0.05),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
