@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
-import { RACE_STATUS, BOT_DEFS, GAME_MODES } from "../../constants";
+import { RACE_STATUS, BOT_DEFS, GAME_MODES  } from "../../constants/Index";
+
 
 export function TypingPanel({ text, typed, errors, status, onInput, mode, playerColor }) {
   const inputRef = useRef(null);

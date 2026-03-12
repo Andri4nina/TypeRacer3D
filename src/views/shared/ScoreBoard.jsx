@@ -1,5 +1,6 @@
+import { GAME_MODES } from "../../constants/Index";
 import { Button }     from "../shared/Button";
-import { GAME_MODES } from "../../constants";
+
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 

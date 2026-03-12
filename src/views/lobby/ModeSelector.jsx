@@ -1,4 +1,5 @@
-import { BOT_DEFS, GAME_MODES } from "../../constants";
+// import { BOT_DEFS, GAME_MODES } from "../../constants";
+import {  BOT_DEFS, GAME_MODES } from "../../constants/Index";
 import { Button }  from "../shared/Button";
 import { Input }   from "../shared/Input";
 

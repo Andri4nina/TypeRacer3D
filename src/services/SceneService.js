@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { TRACK_LENGTH, LANE_WIDTH } from "../constants";
+import { TRACK_LENGTH , LANE_WIDTH } from "../constants/Index";
+
 
 // ── Math helpers ─────────────────────────────────────────────
 export const lerp     = (a, b, t) => a + (b - a) * t;
@@ -210,63 +211,75 @@ export function buildWorld(totalLanes) {
 // ── Build car mesh ────────────────────────────────────────────
 export function buildCar(colorHex) {
   const color = typeof colorHex === "string" ? parseInt(colorHex.replace("#", ""), 16) : colorHex;
-  const g     = new THREE.Group();
 
-  const mat  = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.7, roughness: 0.25 });
+  // Inner group holds all parts — rotated 180° so the nose faces DOWN the track (away from camera)
+  const inner = new THREE.Group();
+  const g     = new THREE.Group();
+  g.add(inner);
+  inner.rotation.y = Math.PI;   // ← THIS is the fix: nose now points toward finish line
+
+  const mat = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.7, roughness: 0.25 });
   const win  = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, metalness: 0.3, transparent: true, opacity: 0.72 });
   const wm   = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
   const rim  = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.95, roughness: 0.05 });
 
   // Body
   const body = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.4, 2.7), mat(color));
-  body.position.y = 0.4; body.castShadow = true; g.add(body);
+  body.position.y = 0.4; body.castShadow = true; inner.add(body);
 
-  // Nose
+  // Nose (points toward +Z in inner space = away from cam after rotation)
   const nose = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.9), mat(color));
-  nose.position.set(0, 0.3, 1.75); nose.castShadow = true; g.add(nose);
+  nose.position.set(0, 0.3, 1.75); nose.castShadow = true; inner.add(nose);
 
-  // Cockpit
+  // Cockpit (slightly behind centre)
   const cockpit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.38, 1.1), win);
-  cockpit.position.set(0, 0.72, -0.1); g.add(cockpit);
+  cockpit.position.set(0, 0.72, -0.1); inner.add(cockpit);
 
   // Sidepods
   [-0.7, 0.7].forEach(sx => {
     const pod = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 1.4), mat(color));
-    pod.position.set(sx, 0.32, 0.1); pod.castShadow = true; g.add(pod);
+    pod.position.set(sx, 0.32, 0.1); pod.castShadow = true; inner.add(pod);
   });
 
-  // Rear wing
+  // Rear wing (at -Z in inner = near camera = correct rear)
   const rw = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.38), mat(color));
-  rw.position.set(0, 0.82, -1.28); g.add(rw);
+  rw.position.set(0, 0.82, -1.28); inner.add(rw);
   [-0.65, 0.65].forEach(sx => {
     const ep = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.38), mat(color));
-    ep.position.set(sx, 0.62, -1.28); g.add(ep);
+    ep.position.set(sx, 0.62, -1.28); inner.add(ep);
   });
 
-  // Front wing
+  // Front wing (at +Z in inner = away from cam = correct front)
   const fw = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.05, 0.25), mat(color));
-  fw.position.set(0, 0.14, 2.15); g.add(fw);
+  fw.position.set(0, 0.14, 2.15); inner.add(fw);
 
-  // Wheels (indices 8-11 for spin)
+  // Wheels — children indices on inner: 8,9 = front; 10,11 = rear (each wheel = tyre + rim = 2 children)
+  // front-left, front-right, rear-left, rear-right
   const wg = new THREE.CylinderGeometry(0.29, 0.29, 0.24, 16);
-  [[-0.8, 0.29, 0.9],[0.8, 0.29, 0.9],[-0.8, 0.29, -0.88],[0.8, 0.29, -0.88]].forEach(([x, y, z]) => {
-    const w = new THREE.Mesh(wg, wm); w.rotation.z = Math.PI / 2; w.position.set(x, y, z); g.add(w);
+  [
+    [-0.8, 0.29,  1.0],   // front-left
+    [ 0.8, 0.29,  1.0],   // front-right
+    [-0.8, 0.29, -0.95],  // rear-left
+    [ 0.8, 0.29, -0.95],  // rear-right
+  ].forEach(([x, y, z]) => {
+    const w = new THREE.Mesh(wg, wm);
+    w.rotation.z = Math.PI / 2; w.position.set(x, y, z); inner.add(w);
     const r = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.25, 8), rim);
-    r.rotation.z = Math.PI / 2; r.position.set(x, y, z); g.add(r);
+    r.rotation.z = Math.PI / 2; r.position.set(x, y, z); inner.add(r);
   });
 
-  // Headlights
+  // Headlights (at front = +Z in inner)
   const hlM = new THREE.MeshStandardMaterial({ color: 0xfef9c3, emissive: 0xfef9c3, emissiveIntensity: 2.5 });
   [-0.38, 0.38].forEach(x => {
     const hl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 0.05), hlM);
-    hl.position.set(x, 0.38, 1.42); g.add(hl);
+    hl.position.set(x, 0.38, 2.18); inner.add(hl);
   });
 
-  // Tail lights
+  // Tail lights (at rear = -Z in inner = facing camera = correct)
   const tlM = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.5 });
   [-0.48, 0.48].forEach(x => {
     const tl = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.04), tlM);
-    tl.position.set(x, 0.4, -1.38); g.add(tl);
+    tl.position.set(x, 0.4, -1.38); inner.add(tl);
   });
 
   return g;
@@ -282,8 +295,12 @@ export class ExhaustSystem {
         new THREE.SphereGeometry(0.07, 4, 4),
         new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.45 })
       );
-      p.position.copy(pos); p.position.y += 0.2; p.position.z += 1.4;
-      p.userData = { life: 1, vx: (Math.random() - 0.5) * 0.06, vy: Math.random() * 0.03 + 0.01, vz: 0.07 };
+      // After inner.rotation.y = PI, the rear of the car is at +Z world
+      // so exhaust spawns slightly behind (+Z) the car position
+      p.position.copy(pos);
+      p.position.y += 0.25;
+      p.position.z += 1.5;  // ← +Z = behind car (toward camera) = correct rear
+      p.userData = { life: 1, vx: (Math.random() - 0.5) * 0.06, vy: Math.random() * 0.03 + 0.01, vz: 0.06 };
       this.scene.add(p); this.particles.push(p);
     }
   }

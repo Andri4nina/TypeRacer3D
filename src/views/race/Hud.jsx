@@ -1,4 +1,5 @@
-import { GAME_MODES } from "../../constants";
+import { GAME_MODES } from "../../constants/Index";
+
 
 export function HUD({ wpm, progress, errors, mode }) {
   const isSolo = mode === GAME_MODES.SOLO;

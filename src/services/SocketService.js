@@ -1,17 +1,33 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SocketService — single source of truth for all socket communication.
+//
+// MODES:
+//   Solo / Bot Race  → attachMockServer()  (no backend needed)
+//   Multiplayer      → real socket.io-client  (requires Node server on SERVER_URL)
+//
+// To change server URL: set VITE_SERVER_URL in .env  (default: localhost:3001)
+// ─────────────────────────────────────────────────────────────────────────────
 
+import {  RACE_TEXTS, BOT_DEFS } from "../constants/Index";
 
-import { RACE_TEXTS ,BOT_DEFS} from "../constants/Index";
+// ── Server URL ───────────────────────────────────────────────────────────────
+export const SERVER_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SERVER_URL) ||
+  "http://localhost:3001";
 
-// ── Socket event catalog (single source) ────────────────────
+// ── Socket event catalog (must match Index.js exactly) ───────────────────────
 export const SE = {
   // emit (client → server)
   CREATE_ROOM:      "room:create",
   JOIN_ROOM:        "room:join",
   START_RACE:       "race:requestStart",
   PLAYER_PROGRESS:  "player:progress",
+  ROOMS_LIST:       "rooms:list",
   // listen (server → client)
   ROOM_JOINED:      "room:joined",
   ROOM_UPDATE:      "room:update",
+  ROOM_ERROR:       "room:error",
+  ROOMS_REFRESH:    "rooms:refresh",
   COUNTDOWN:        "race:countdown",
   RACE_START:       "race:start",
   BOTS_PROGRESS:    "bots:progress",
@@ -19,21 +35,41 @@ export const SE = {
   RACE_FINISHED:    "race:finished",
 };
 
-// ── Minimal event-emitter mock ───────────────────────────────
+// ── Minimal in-memory event emitter (mock socket shape) ──────────────────────
 function createMockSocket() {
   const bus = {};
   return {
-    id:    "P_" + Math.random().toString(36).slice(2, 5).toUpperCase(),
+    id:       "P_" + Math.random().toString(36).slice(2, 5).toUpperCase(),
+    isMock:   true,
     on:    (ev, fn) => { bus[ev] = bus[ev] || []; bus[ev].push(fn); },
     off:   (ev, fn) => { if (bus[ev]) bus[ev] = bus[ev].filter(f => f !== fn); },
-    emit:  () => {},                          // intercepted by attachMockServer
+    emit:  () => {},
     _fire: (ev, d) => (bus[ev] || []).forEach(fn => fn(d)),
+    disconnect: () => {},
   };
 }
 
-// ── Mock server (no backend needed for preview) ──────────────
+// ── Real socket.io-client (async, lazy) ─────────────────────────────────────
+export async function createRealSocket() {
+  const { io } = await import("socket.io-client");
+  const socket  = io(SERVER_URL, {
+    transports: ["websocket", "polling"],
+    reconnectionAttempts: 5,
+    timeout: 6000,
+  });
+  // Wait for connection or error
+  await new Promise((resolve, reject) => {
+    socket.once("connect",        resolve);
+    socket.once("connect_error",  reject);
+  });
+  return socket;
+}
+
+// ── Mock server (solo + bot modes — no Node backend needed) ──────────────────
+// import { RACE_TEXTS, BOT_DEFS } from "../constants";
+
 function wpmSpeed(wpm, len) {
-  return (wpm * 5 / 60) * 0.1 / len;        // progress per 100 ms tick
+  return (wpm * 5 / 60) * 0.1 / len;
 }
 
 export function attachMockServer(socket, name, color) {
@@ -46,7 +82,6 @@ export function attachMockServer(socket, name, color) {
     progress: 0, wpm: 0, errors: 0, finished: false, lane: 0, isBot: false,
   };
 
-  // Intercept all emit() calls
   socket.emit = (ev, data) => {
     if (ev === SE.CREATE_ROOM || ev === SE.JOIN_ROOM) {
       setTimeout(() => socket._fire(SE.ROOM_JOINED, {
@@ -54,7 +89,7 @@ export function attachMockServer(socket, name, color) {
         state: { id: roomId, status: "waiting", text, host: socket.id, players: [{ ...ps }], scores: [] },
       }), 60);
     }
-    if (ev === SE.START_RACE)       startCountdown();
+    if (ev === SE.START_RACE) startCountdown();
     if (ev === SE.PLAYER_PROGRESS && data) {
       Object.assign(ps, data);
       if (data.progress >= 1) ps.finished = true;
@@ -86,7 +121,9 @@ export function attachMockServer(socket, name, color) {
           if (b.progress >= 1) b.finished = true;
         }
       });
-      socket._fire(SE.BOTS_PROGRESS, bots.map(b => ({ id: b.id, progress: b.progress, finished: b.finished })));
+      socket._fire(SE.BOTS_PROGRESS, bots.map(b => ({
+        id: b.id, progress: b.progress, finished: b.finished,
+      })));
 
       if (bots.every(b => b.finished) && ps.finished) {
         clearInterval(raceIv);
@@ -100,12 +137,17 @@ export function attachMockServer(socket, name, color) {
   }
 }
 
-// ── Singleton factory ────────────────────────────────────────
-let _s = null;
-export const getSocket   = () => { if (!_s) _s = createMockSocket(); return _s; };
-export const resetSocket = () => { _s = null; };
+// ── Singletons ────────────────────────────────────────────────────────────────
+let _mockSocket = null;
 
-// ── Production swap ──────────────────────────────────────────
-// To connect a real server, replace getSocket() with:
-//   import { io } from "socket.io-client";
-//   export const getSocket = () => io("http://localhost:3001");
+export function getMockSocket() {
+  if (!_mockSocket) _mockSocket = createMockSocket();
+  return _mockSocket;
+}
+
+export function resetSocket() {
+  if (_mockSocket) { _mockSocket.disconnect?.(); _mockSocket = null; }
+}
+
+// Legacy alias used by solo/bot paths
+export const getSocket = getMockSocket;

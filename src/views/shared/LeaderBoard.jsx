@@ -1,4 +1,4 @@
-import { MiniBar } from "./Minibar";
+import { MiniBar } from "./MiniBar";
 
 
 const RANK_COLORS = ["#f59e0b", "#94a3b8", "#cd7f32"];
