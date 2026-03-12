@@ -2,7 +2,7 @@ import { GAME_MODES, RACE_STATUS } from "../../constants/Index";
 import { useRaceVM } from "../../viewmodels/UseRacevm";
 import { Countdown } from "../shared/CountDown";
 import { Leaderboard } from "../shared/LeaderBoard";
-import { MiniBar } from "../shared/Minibar";
+import  MiniBar  from "../shared/Minibar";
 
 import { PostFinishBanner } from "../shared/PostFinishBanner";
 import { ScoreBoard } from "../shared/ScoreBoard";
