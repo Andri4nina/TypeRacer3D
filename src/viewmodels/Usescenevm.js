@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import * as THREE from "three";
 import { buildWorld, ExhaustSystem, lerp, getLaneX } from "../services/SceneService";
 
-import { BOT_DEFS, TRACK_LENGTH, GAME_MODES, DEFAULT_CAR_ID } from "../constants";
 import { loadCarModel } from "../views/lobby/CarSelector";
+import { GAME_MODES ,BOT_DEFS, TRACK_LENGTH, DEFAULT_CAR_ID} from "../constants/Index";
 
 /**
  * ViewModel — 3-D scene.

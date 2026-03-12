@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+
+import { BOT_DEFS, RACE_STATUS, GAME_MODES } from "../constants/Index";
 import { SE } from "../services/SocketService";
-import { BOT_DEFS, RACE_STATUS, GAME_MODES } from "../constants";
+
 
 const POST_FINISH_DELAY = 10; // seconds after first human finishes
 

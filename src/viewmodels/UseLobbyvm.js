@@ -56,7 +56,8 @@
 
 
 import { useState, useCallback } from "react";
-import { GAME_MODES, PLAYER_COLORS, DEFAULT_CAR_ID } from "../constants";
+import {  GAME_MODES, PLAYER_COLORS, DEFAULT_CAR_ID  } from "../constants/Index";
+
 
 /**
  * ViewModel — Lobby screen.

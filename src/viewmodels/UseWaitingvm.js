@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { SE } from "../services/SocketService";
-import { BOT_DEFS } from "../constants";
+import { BOT_DEFS } from "../constants/Index";
+
 
 /**
  * ViewModel — Waiting Room.
