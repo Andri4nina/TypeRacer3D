@@ -1,4 +1,6 @@
-import { RACE_TEXTS, BOT_DEFS } from "../constants";
+
+
+import { RACE_TEXTS ,BOT_DEFS} from "../constants/Index";
 
 // ── Socket event catalog (single source) ────────────────────
 export const SE = {
