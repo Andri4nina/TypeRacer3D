@@ -1,120 +1,163 @@
 /* eslint-disable react-refresh/only-export-components */
-import { CAR_MODELS, DEFAULT_CAR_ID } from "../../constants/Index";
-import { buildCar } from "../../services/SceneService";
+import { useEffect, useRef } from "react";
+import { CAR_MODELS } from "../../constants/Index";
 import * as THREE from "three";
+import { loadCarModel } from "../../services/CarLoaderService";
 
-// ── Lazy-load GLTFLoader only when needed (avoids bundle bloat if unused) ──
-let _GLTFLoader = null;
-async function getGLTFLoader() {
-  if (_GLTFLoader) return _GLTFLoader;
-  // three/examples is always available alongside three
-  const mod = await import("three/examples/jsm/loaders/GLTFLoader.js");
-  _GLTFLoader = new mod.GLTFLoader();
-  return _GLTFLoader;
-}
 
-// ── In-memory cache: modelId → THREE.Group (cloned per use) ─────────────────
-const _cache = new Map();
 
 /**
- * loadCarModel(modelId, colorHex) → Promise<THREE.Group>
- *
- * Returns a ready-to-add scene object.
- * - If modelId is "default" or file is null → returns the procedural mesh.
- * - If the GLB fails to load → logs a warning and falls back to procedural.
- * - Applies colorHex to meshes matching colorMesh regex (or all if null).
+ * CarPreview3D — tiny Three.js canvas showing a rotating car.
+ * Always mounted (no conditional), re-mounts cleanly when modelId/color changes.
  */
-export async function loadCarModel(modelId, colorHex = "#ffffff") {
-  const def = CAR_MODELS.find(m => m.id === modelId) ?? CAR_MODELS.find(m => m.id === DEFAULT_CAR_ID);
+function CarPreview3D({ modelId, color, size = 72 }) {
+  const mountRef = useRef(null);
 
-  // ── Procedural fallback (default or no file defined) ────────────────────────
-  if (!def.file) {
-    const g = buildCar(colorHex);
-    return g;
-  }
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
 
-  // ── Try GLB load (with cache) ───────────────────────────────────────────────
-  try {
-    if (!_cache.has(def.id)) {
-      const loader = await getGLTFLoader();
-      const gltf   = await new Promise((resolve, reject) => {
-        loader.load(def.file, resolve, undefined, reject);
-      });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(size, size);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    mount.appendChild(renderer.domElement);
 
-      // Normalise: centre + scale
-      const root = gltf.scene;
-      root.scale.setScalar(def.scale);
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(0, 3, 7);
+    camera.lookAt(0, 0.5, 0);
 
-      // Auto-centre bounding box
-      const box = new THREE.Box3().setFromObject(root);
-      const cen = new THREE.Vector3();
-      box.getCenter(cen);
-      root.position.sub(cen);
-      // Sit on ground
-      const sz = new THREE.Vector3();
-      box.getSize(sz);
-      root.position.y += sz.y / 2 + (def.offsetY ?? 0);
+    scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+    const sun = new THREE.DirectionalLight(0xfff4e0, 3.5);
+    sun.position.set(5, 8, 5); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xb0d0ff, 1.0);
+    fill.position.set(-4, 2, -4); scene.add(fill);
 
-      root.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
-      _cache.set(def.id, root);
-    }
+    let carGroup = null;
+    let rafId;
+    let t = 0;
+    let alive = true;
 
-    // Clone so each racer has its own instance
-    const clone = _cache.get(def.id).clone(true);
-    applyColor(clone, colorHex, def.colorMesh);
-    return clone;
+    loadCarModel(modelId, color).then(g => {
+      if (!alive) return; // component unmounted while loading
+      // Centre the car for the preview camera
+      const box = new THREE.Box3().setFromObject(g);
+      const cen = new THREE.Vector3(); box.getCenter(cen);
+      g.position.sub(cen);
+      g.position.y += 0.3;
+      carGroup = g;
+      scene.add(g);
+    }).catch(() => {}); // silent fail — fallback handled in loadCarModel
 
-  } catch (err) {
-    console.warn(`[CarLoader] Failed to load "${def.file}", using fallback.`, err);
-    return buildCar(colorHex);
-  }
-}
+    const animate = () => {
+      rafId = requestAnimationFrame(animate);
+      t += 0.018;
+      if (carGroup) carGroup.rotation.y = t * 0.7;
+      renderer.render(scene, camera);
+    };
+    animate();
 
-/**
- * applyColor(group, colorHex, meshFilter)
- * Tints meshes whose names match meshFilter (string/RegExp), or all if null.
- */
-export function applyColor(group, colorHex, meshFilter = null) {
-  const col = new THREE.Color(colorHex);
-  const re  = meshFilter
-    ? (typeof meshFilter === "string" ? new RegExp(meshFilter, "i") : meshFilter)
-    : null;
+    return () => {
+      alive = false;
+      cancelAnimationFrame(rafId);
+      renderer.dispose();
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+    };
+  }, [modelId, color, size]);
 
-  group.traverse(c => {
-    if (!c.isMesh) return;
-    if (re && !re.test(c.name)) return;
-    if (Array.isArray(c.material)) {
-      c.material = c.material.map(m => {
-        const n = m.clone();
-        n.color.set(col);
-        return n;
-      });
-    } else {
-      c.material = c.material.clone();
-      c.material.color.set(col);
-    }
-  });
+  return (
+    <div
+      ref={mountRef}
+      style={{ width: size, height: size, flexShrink: 0, pointerEvents: "none" }}
+    />
+  );
 }
 
 /**
- * clearCache() — call when hot-reloading or swapping assets in dev.
+ * ModelCard — one car option in the grid.
+ * Shows 3D preview always (not just when selected).
  */
-export function clearCarCache() { _cache.clear(); }
+function ModelCard({ def, color, selected, onClick }) {
+  const ac = def.preview;
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        cursor: "pointer",
+        border:     `1.5px solid ${selected ? ac : "rgba(255,255,255,0.08)"}`,
+        borderRadius: 6,
+        background: selected ? `${ac}14` : "rgba(255,255,255,0.02)",
+        padding: "8px 8px 6px",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+        transition: "border-color 0.15s, background 0.15s",
+        position: "relative", overflow: "hidden",
+        userSelect: "none",
+      }}
+    >
+      {/* Top accent bar when selected */}
+      {selected && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: `linear-gradient(90deg, transparent, ${ac}, transparent)`,
+          pointerEvents: "none",
+        }} />
+      )}
 
-/**
- * Synchronous preview colour for the selector card (no 3D needed).
- * Returns the catalogue entry's preview hex.
- */
-export function getModelPreviewColor(modelId) {
-  return CAR_MODELS.find(m => m.id === modelId)?.preview ?? "#f59e0b";
-}
+      {/* 3D preview — always shown */}
+      <CarPreview3D modelId={def.id} color={color} size={72} />
 
-// At the bottom of CarSelector.jsx
-export function CarSelector() {
-    return (
-      <div className="car-selector">
-        {/* Your UI logic here */}
-        <h2>Select Your Ride</h2>
+      {/* Car name */}
+      <div style={{
+        fontSize: 8, fontWeight: 700, letterSpacing: "0.1em",
+        color: selected ? ac : "rgba(255,255,255,0.45)",
+        textAlign: "center", lineHeight: 1.3, textTransform: "uppercase",
+      }}>
+        {def.name}
       </div>
-    );
-  }
+
+      {/* Selected checkmark */}
+      {selected && (
+        <div style={{ fontSize: 7, letterSpacing: "0.12em", color: ac }}>✓ SELECTED</div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * CarSelector — grid of all CAR_MODELS.
+ * Props:
+ *   selectedId  string — currently selected model id
+ *   color       string — hex livery colour to apply to preview
+ *   onChange    (id) => void
+ */
+export function CarSelector({ selectedId, color, onChange }) {
+  return (
+    <div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: 6,
+      }}>
+        {CAR_MODELS.map(def => (
+          <ModelCard
+            key={def.id}
+            def={def}
+            color={color}
+            selected={selectedId === def.id}
+            onClick={() => onChange(def.id)}
+          />
+        ))}
+      </div>
+
+      <div style={{
+        marginTop: 8, fontSize: 8, color: "rgba(255,255,255,0.18)",
+        letterSpacing: "0.06em", lineHeight: 1.6,
+      }}>
+        💡 Glisse un <code style={{ color: "rgba(255,255,255,0.3)" }}>.glb</code> dans{" "}
+        <code style={{ color: "rgba(255,255,255,0.3)" }}>/public/cars/</code> et
+        enregistre-le dans <code style={{ color: "rgba(255,255,255,0.3)" }}>constants/index.js</code>
+      </div>
+    </div>
+  );
+}

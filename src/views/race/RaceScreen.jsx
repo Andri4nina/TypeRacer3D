@@ -13,6 +13,7 @@ import { SceneCanvas } from "./ScreenCanva";
 
 
 
+
 const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
   @keyframes cdPop   { from{transform:scale(2.4);opacity:0} to{transform:scale(1);opacity:1} }
@@ -21,7 +22,7 @@ const GLOBAL_CSS = `
   @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
 `;
 
-export function RaceScreen({ socket, text, mode, players, playerName, playerColor, playerCarModelId, onPlayAgain }) {
+export function RaceScreen({ socket, text, mode, players, playerName, playerColor, playerCarModelId, onPlayAgain, onMenu }) {
   const vm     = useRaceVM({ socket, text, mode, playerName, playerColor, players });
   const isSolo = mode === GAME_MODES.SOLO;
 
@@ -93,6 +94,7 @@ export function RaceScreen({ socket, text, mode, players, playerName, playerColo
             playerName={playerName}
             mode={mode}
             onPlayAgain={onPlayAgain}
+            onMenu={onMenu}
           />
         )}
       </div>
@@ -146,4 +148,3 @@ const S = {
   preRaceTitle: { fontSize: 32, fontWeight: 700, letterSpacing: "0.2em", color: "#f1f5f9", marginBottom: 10 },
   preRaceSub:   { fontSize: 10, letterSpacing: "0.35em", color: "rgba(245,158,11,0.6)", animation: "blink 1.4s ease-in-out infinite" },
 };
-

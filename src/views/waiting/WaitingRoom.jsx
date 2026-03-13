@@ -6,7 +6,8 @@ import { PlayerList } from "../shared/PLayerList";
 
 
 
-export function WaitingRoom({ socket, roomState: initial, mode }) {
+
+export function WaitingRoom({ socket, roomState: initial, mode, onMenu }) {
   const vm      = useWaitingVM({ socket, initialState: initial });
   const isMulti = mode === GAME_MODES.MULTIPLAYER;
 
@@ -61,6 +62,11 @@ export function WaitingRoom({ socket, roomState: initial, mode }) {
             WAITING FOR HOST TO START
           </div>
         )}
+
+        {/* Back to menu — always visible */}
+        <button onClick={onMenu} style={S.menuBtn}>
+          ← BACK TO MENU
+        </button>
       </div>
     </div>
   );
@@ -111,8 +117,14 @@ const S = {
     padding: "14px 0", fontSize: 11, letterSpacing: "0.2em",
     color: "rgba(255,255,255,0.35)",
   },
-  waitDot: {
+  menuBtn: {
+    display: "block", width: "100%", marginTop: 10,
+    background: "transparent", border: "none",
+    color: "rgba(255,255,255,0.2)", fontSize: 9,
+    letterSpacing: "0.2em", cursor: "pointer",
+    padding: "8px 0", fontFamily: "inherit",
+    textTransform: "uppercase", transition: "color 0.15s",
+  },
     display: "inline-block", width: 6, height: 6, borderRadius: "50%",
     background: "#f59e0b", animation: "pulse 1.2s ease-in-out infinite",
-  },
-};
+  };

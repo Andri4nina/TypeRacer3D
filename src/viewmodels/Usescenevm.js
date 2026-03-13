@@ -2,10 +2,8 @@ import { useEffect } from "react";
 import * as THREE from "three";
 import { buildWorld, ExhaustSystem, lerp, getLaneX } from "../services/SceneService";
 
-import { loadCarModel } from "../views/lobby/CarSelector";
 import { GAME_MODES ,BOT_DEFS, TRACK_LENGTH, DEFAULT_CAR_ID} from "../constants/Index";
-
-
+import { loadCarModel } from "../services/CarLoaderService";
 
 
 // export function useSceneVM({
@@ -150,15 +148,26 @@ import { GAME_MODES ,BOT_DEFS, TRACK_LENGTH, DEFAULT_CAR_ID} from "../constants/
 //   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 // }
 
-// function spinWheels(car, speed = 0.13) {
-//   car.children.forEach((c, i) => { if (i >= 8 && i <= 11) c.rotation.x += speed; });
+// function spinWheels(carGroup, speed = 0.13) {
+//   // Structure: g (outer) → inner (child 0, rotated 180°) → parts
+//   // Wheel meshes are at indices 8–15 inside inner (4 tyres + 4 rims, 2 children each)
+//   const inner = carGroup.children[0];
+//   if (!inner) return;
+//   inner.children.forEach((c, i) => { if (i >= 8 && i <= 15) c.rotation.x += speed; });
 // }
-
 
 /**
  * ViewModel — 3-D scene.
- * Loads player car via CarLoaderService (supports GLB + procedural fallback).
- * Bots always use the procedural fallback with their own colour.
+ *
+ * KEY FIX: `players` now contains ONLY human players (bots are appended
+ * separately by App.jsx using BOT_DEFS). We split them cleanly here.
+ *
+ * Lane layout:
+ *   [0 … humans.length-1]  → human players  → stored in playerCarMapRef
+ *   [humans.length … end]  → bots           → stored in botCarMapRef
+ *
+ * All cars are loaded async via CarLoaderService; they appear as they load
+ * (render loop starts immediately so the scene is visible right away).
  */
 export function useSceneVM({
   mountRef, mode, players, playerName, playerCarModelId,
@@ -169,13 +178,14 @@ export function useSceneVM({
     const mount = mountRef.current;
     if (!mount) return;
 
-    const isSolo     = mode === GAME_MODES.SOLO;
-    const botCount   = isSolo ? 0 : BOT_DEFS.length;
-    const totalLanes = Math.max(players.length + botCount, 1);
+    // ── Separate humans vs bots ────────────────────────────────────────────
+    const humanPlayers = players.filter(p => !p.isBot);
+    const isSolo       = mode === GAME_MODES.SOLO;
+    const botDefs      = isSolo ? [] : BOT_DEFS;
+    const totalLanes   = Math.max(humanPlayers.length + botDefs.length, 1);
 
-    const { scene } = buildWorld(totalLanes);
-
-    const camera = new THREE.PerspectiveCamera(58, mount.clientWidth / mount.clientHeight, 0.1, 350);
+    const { scene }  = buildWorld(totalLanes);
+    const camera     = new THREE.PerspectiveCamera(58, mount.clientWidth / mount.clientHeight, 0.1, 350);
     camera.position.set(0, 3.2, 8);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -187,58 +197,66 @@ export function useSceneVM({
 
     const allLX = Array.from({ length: totalLanes }, (_, i) => getLaneX(i, totalLanes));
 
-    // ── Load all cars async, then start the loop ─────────────────────────────
-    const loadPromises = [];
+    // ── Load human player cars ─────────────────────────────────────────────
+    humanPlayers.forEach((p, i) => {
+      const isLocalPlayer = p.name === playerName && !p.isBot;
+      const modelId       = isLocalPlayer ? (playerCarModelId ?? DEFAULT_CAR_ID) : DEFAULT_CAR_ID;
 
-    // Human players — use their chosen model
-    players.forEach((p, i) => {
-      const modelId = (p.name === playerName && !p.isBot)
-        ? (playerCarModelId ?? DEFAULT_CAR_ID)
-        : DEFAULT_CAR_ID;
-
-      const prom = loadCarModel(modelId, p.color).then(car => {
-        car.position.set(allLX[i] ?? 0, 0, 6);
+      loadCarModel(modelId, p.color).then(car => {
+        car.position.set(allLX[i], 0, 6);
         scene.add(car);
-        playerCarMapRef.current[p.id] = { car, smoothZ: 6, smoothX: allLX[i] ?? 0, progress: 0 };
+        playerCarMapRef.current[p.id] = {
+          car,
+          smoothZ: 6,
+          smoothX: allLX[i],
+          progress: 0,
+        };
       });
-      loadPromises.push(prom);
     });
 
-    // Bots — always procedural (default)
-    if (!isSolo) {
-      BOT_DEFS.forEach((b, i) => {
-        const lx   = allLX[players.length + i] ?? getLaneX(players.length + i, totalLanes);
-        const prom = loadCarModel(DEFAULT_CAR_ID, b.color).then(car => {
-          car.position.set(lx, 0, 6);
-          scene.add(car);
-          botCarMapRef.current[b.id] = { car, smoothZ: 6, smoothX: lx, progress: 0 };
-        });
-        loadPromises.push(prom);
+    // ── Load bot cars ──────────────────────────────────────────────────────
+    botDefs.forEach((b, i) => {
+      const lx = allLX[humanPlayers.length + i];
+      loadCarModel(DEFAULT_CAR_ID, b.color).then(car => {
+        car.position.set(lx, 0, 6);
+        scene.add(car);
+        botCarMapRef.current[b.id] = {
+          car,
+          smoothZ: 6,
+          smoothX: lx,
+          progress: 0,
+        };
       });
-    }
+    });
 
-    // Start render loop immediately (cars appear as they load)
-    const myP     = players.find(p => p.name === playerName && !p.isBot) || players[0];
-    const myLaneX = allLX[players.indexOf(myP)] ?? 0;
+    // ── Identify local player for camera ──────────────────────────────────
+    const myP     = humanPlayers.find(p => p.name === playerName) ?? humanPlayers[0];
+    const myIdx   = myP ? humanPlayers.indexOf(myP) : 0;
+    const myLaneX = allLX[myIdx] ?? 0;
 
     const sm = {
       pZ: 6, pX: myLaneX, rY: 0, rZ: 0,
-      camX: myLaneX, camZ: myLaneX !== 0 ? 16.5 : 17, camY: 3.2, wSpd: 0,
+      camX: myLaneX,
+      camZ: myLaneX !== 0 ? 16.5 : 17,
+      camY: 3.2,
+      wSpd: 0,
     };
+
     const exhaust = new ExhaustSystem(scene);
     let t = 0, lastProg = 0, vel = 0, rafId;
 
+    // ── Animation loop ─────────────────────────────────────────────────────
     const animate = () => {
       rafId = requestAnimationFrame(animate);
       t += 0.016;
 
       const prog = progressRef.current ?? 0;
-      vel = lerp(vel, (prog - lastProg) * 60, 0.08);
-      lastProg = prog;
+      vel        = lerp(vel, (prog - lastProg) * 60, 0.08);
+      lastProg   = prog;
 
-      // Non-player human cars
+      // Other human players (not local)
       Object.entries(playerCarMapRef.current).forEach(([id, cm]) => {
-        if (myP && id === myP.id) return;
+        if (myP && id === myP.id) return;          // skip local — handled below
         cm.smoothZ = lerp(cm.smoothZ, 6 - cm.progress * TRACK_LENGTH, 0.055);
         cm.car.position.z = cm.smoothZ;
         spinWheels(cm.car);
@@ -251,7 +269,7 @@ export function useSceneVM({
         spinWheels(cm.car);
       });
 
-      // Player car
+      // Local player car + camera
       const myCM = myP ? playerCarMapRef.current[myP.id] : null;
       if (myCM) {
         const tPZ     = 6 - prog * TRACK_LENGTH;
@@ -269,13 +287,15 @@ export function useSceneVM({
         myCM.car.rotation.x = lerp(myCM.car.rotation.x, Math.min(vel * 7, 0.05), 0.05);
         spinWheels(myCM.car, sm.wSpd);
 
-        sm.camX = lerp(sm.camX, myLaneX,       0.06);
-        sm.camZ = lerp(sm.camZ, sm.pZ + 10.5,  0.06);
+        sm.camX = lerp(sm.camX, myLaneX,      0.06);
+        sm.camZ = lerp(sm.camZ, sm.pZ + 10.5, 0.06);
         sm.camY = lerp(sm.camY, 3.2 + Math.sin(t * 0.4) * 0.02 + Math.min(vel * 1.2, 0.35), 0.04);
         camera.position.set(sm.camX, sm.camY, sm.camZ);
         camera.lookAt(myLaneX, 0.4, lerp(sm.pZ - 17, sm.pZ - 22, Math.min(vel * 8, 1)));
 
-        if (!finishedRef.current && vel > 0.001 && t % 0.1 < 0.016) exhaust.emit(myCM.car.position);
+        if (!finishedRef.current && vel > 0.001 && t % 0.1 < 0.016) {
+          exhaust.emit(myCM.car.position);
+        }
       }
 
       exhaust.update();
@@ -303,8 +323,6 @@ export function useSceneVM({
 }
 
 function spinWheels(carGroup, speed = 0.13) {
-  // Structure: g (outer) → inner (child 0, rotated 180°) → parts
-  // Wheel meshes are at indices 8–15 inside inner (4 tyres + 4 rims, 2 children each)
   const inner = carGroup.children[0];
   if (!inner) return;
   inner.children.forEach((c, i) => { if (i >= 8 && i <= 15) c.rotation.x += speed; });
