@@ -13,7 +13,7 @@ import {  RACE_TEXTS, BOT_DEFS } from "../constants/Index";
 // ── Server URL ───────────────────────────────────────────────────────────────
 export const SERVER_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SERVER_URL) ||
-  "https://server-type-racer3-d.vercel.app/";
+  "https://servertyperacer3d.onrender.com";
 
 // ── Socket event catalog (must match Index.js exactly) ───────────────────────
 export const SE = {
