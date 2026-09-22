@@ -1,8 +1,13 @@
 /* eslint-disable react-hooks/purity */
 import React from 'react'
 import { useApp } from '../../../shared/contexts/AppContext'
+import { formatDuration } from '../../../shared/utils/time'
+import Icon from '../../../shared/components/Icon'
+import DebriefView from './DebriefView'
+import Confetti from './Confetti'
 
-const MEDALS = ['🥇', '🥈', '🥉']
+// Or / argent / bronze — l'icône est la même, seule la teinte change
+const MEDAL_TINTS = ['#fbbf24', '#cbd5e1', '#d97706']
 const POSITION_LABEL = ['1ST_PLACE', '2ND_PLACE', '3RD_PLACE', '4TH_PLACE', '5TH_PLACE', '6TH_PLACE', '7TH_PLACE', '8TH_PLACE']
 
 const sortRacers = (racers) =>
@@ -12,7 +17,20 @@ const sortRacers = (racers) =>
     return scoreB - scoreA
   })
 
-const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQuit, isMulti = false }) => {
+const FinishView = ({
+  racers = [],
+  playerWpm = 0,
+  accuracy = 100,
+  errors = 0,
+  elapsedMs = 0,
+  textLength = 0,
+  debrief = null,
+  onRematchSameText,
+  hasGhost = false,
+  onRestart,
+  onQuit,
+  isMulti = false,
+}) => {
   const { playerColor, socket, roomState } = useApp()
 
   const sorted = isMulti
@@ -22,27 +40,28 @@ const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQ
   const playerPos = sorted.findIndex(r => r.isPlayer)
   const position = playerPos + 1
   const isHost = isMulti && roomState?.host === socket?.id
-  const waitingForRematch = isMulti && roomState?.status === 'waiting'
 
+  // Numéro de debrief figé pour la durée de l'écran (sinon il change à chaque rendu)
+  const missionId = React.useMemo(() => Math.floor(Math.random() * 9000 + 1000), [])
+
+  // En multi, le rematch est piloté par le serveur : il repasse la room en
+  // "waiting", et AppContext renvoie tout le monde sur l'écran d'attente.
   const handleRematch = () => {
     if (isHost && socket) socket.emit('room:rematch')
   }
 
-  React.useEffect(() => {
-    if (isMulti && roomState?.status === 'waiting' && waitingForRematch) {
-      onRestart?.()
-    }
-  }, [roomState?.status, isMulti, waitingForRematch, onRestart])
-
   return (
     <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 overflow-y-auto">
+      {/* Gerbe de confettis : uniquement sur un podium */}
+      {playerPos < 3 && <Confetti color={playerColor} />}
+
       <div className="relative w-full max-w-2xl bg-slate-50 dark:bg-slate-950 border-4 border-slate-900 dark:border-sky-900 shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] dark:shadow-[16px_16px_0px_0px_#0ea5e922] animate-in fade-in zoom-in-95 duration-300">
         
         {/* --- HEADER TACTIQUE --- */}
         <header className="flex justify-between items-center p-6 border-b-4 border-slate-900 dark:border-sky-900 bg-white dark:bg-black/40">
           <div className="leading-none">
             <h2 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
-              MISSION_DEBRIEF <span className="text-sky-500">#{Math.floor(Math.random() * 9000 + 1000)}</span>
+              MISSION_DEBRIEF <span className="text-sky-500">#{missionId}</span>
             </h2>
             <p className="font-mono text-[9px] text-slate-500 mt-1 uppercase tracking-widest font-bold">// CLASSIFIED_RESULT</p>
           </div>
@@ -59,8 +78,15 @@ const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQ
           <div className="flex-1 p-8 text-center bg-white dark:bg-slate-900/20">
             <div className="relative inline-block mb-6">
                {/* Médaille Massive */}
-               <div className="text-8xl relative z-10 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                 {MEDALS[playerPos] ?? '🏁'}
+               <div
+                 className="relative z-10 drop-shadow-[4px_4px_0px_rgba(0,0,0,0.4)]"
+                 style={{ color: MEDAL_TINTS[playerPos] ?? '#94a3b8' }}
+               >
+                 <Icon
+                   name={playerPos < 3 ? 'medal' : 'flag'}
+                   size={96}
+                   strokeWidth={1.2}
+                 />
                </div>
                {/* Effet de Targetting */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-dashed border-sky-500/40 rounded-full animate-[spin_10s_linear_infinite]" />
@@ -77,7 +103,14 @@ const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQ
             <div className="grid grid-cols-1 gap-3">
               {[
                 { label: 'AVG_SPEED', val: `${playerWpm} WPM`, sub: 'Words Per Min' },
+                { label: 'TOTAL_TIME', val: formatDuration(elapsedMs), sub: 'Chrono' },
                 { label: 'ACCURACY', val: `${accuracy}%`, sub: 'Neural Precision', color: accuracy >= 95 ? 'text-emerald-500' : 'text-amber-500' },
+                {
+                  label: 'ERRORS',
+                  val: `${errors}`,
+                  sub: textLength > 0 ? `sur ${textLength} caractères` : 'Mistypes',
+                  color: errors === 0 ? 'text-emerald-500' : errors < 10 ? 'text-amber-500' : 'text-rose-500',
+                },
                 { label: 'RANK', val: `${position}/${sorted.length}`, sub: 'Grid Standing' }
               ].map((stat, i) => (
                 <div key={i} className="bg-slate-100 dark:bg-black/60 border-2 border-slate-900 dark:border-sky-900/30 p-3 flex justify-between items-center group overflow-hidden relative">
@@ -135,14 +168,18 @@ const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQ
           </div>
         </div>
 
+        {/* --- ANALYSE POST-COURSE --- */}
+        <DebriefView debrief={debrief} wpm={playerWpm} color={playerColor} />
+
         {/* --- FOOTER D'ACTIONS --- */}
         <footer className="p-6 bg-white dark:bg-black/60 border-t-4 border-slate-900 dark:border-sky-900 flex flex-col sm:flex-row gap-4">
           
           {isMulti ? (
             isHost ? (
               <button onClick={handleRematch}
-                className="flex-[2] py-4 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0px_0px_#0369a1] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
-                ↺ LAUNCH_REMATCH_SEQUENCE
+                className="flex-[2] flex items-center justify-center gap-3 py-4 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0px_0px_#0369a1] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
+                <Icon name="restart" size={16} strokeWidth={2.5} />
+                LAUNCH_REMATCH_SEQUENCE
               </button>
             ) : (
               <div className="flex-[2] py-4 bg-slate-200 dark:bg-slate-900 text-slate-500 font-black text-[10px] uppercase tracking-widest border-2 border-slate-300 dark:border-sky-900/50 flex items-center justify-center gap-3">
@@ -151,20 +188,34 @@ const FinishView = ({ racers = [], playerWpm = 0, accuracy = 100, onRestart, onQ
               </div>
             )
           ) : (
-            <button onClick={onRestart}
-              className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0px_0px_#065f46] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
-              ↺ INITIATE_NEW_PROTOCOL
-            </button>
+            <>
+              <button onClick={onRestart}
+                className="flex-[2] flex items-center justify-center gap-3 py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0px_0px_#065f46] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all">
+                <Icon name="restart" size={16} strokeWidth={2.5} />
+                INITIATE_NEW_PROTOCOL
+              </button>
+
+              {/* Affronter son propre fantôme n'a de sens que sur le même texte */}
+              {onRematchSameText && (
+                <button onClick={onRematchSameText}
+                  title="Rejouer ce texte pour affronter ton fantôme"
+                  className="flex-1 flex items-center justify-center gap-2 py-4 border-2 border-slate-400 dark:border-sky-700 text-slate-700 dark:text-sky-400 font-black text-[10px] uppercase tracking-widest hover:bg-sky-500/10 transition-colors">
+                  <Icon name={hasGhost ? 'users' : 'restart'} size={14} strokeWidth={2.5} />
+                  {hasGhost ? 'Duel_Fantome' : 'Meme_Texte'}
+                </button>
+              )}
+            </>
           )}
 
           <button onClick={onQuit}
-            className="flex-1 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]">
+            className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]">
+            <Icon name="exit" size={14} strokeWidth={2.5} />
             EXIT_TO_LOBBY
           </button>
         </footer>
 
         {/* --- STYLE POUR LE SCROLLBAR --- */}
-        <style jsx>{`
+        <style>{`
           .custom-scrollbar::-webkit-scrollbar { width: 4px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
           .custom-scrollbar::-webkit-scrollbar-thumb { 

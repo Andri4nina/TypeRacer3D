@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/static-components */
 import React from 'react'
 import { useApp } from '../../../shared/contexts/AppContext'
+import { formatDuration } from '../../../shared/utils/time'
 
-const ScoreView = ({ wpm = 0, accuracy = 100, progress = 0 }) => {
+const ScoreView = ({ wpm = 0, accuracy = 100, progress = 0, combo = 0, elapsedMs = 0 }) => {
   const { playerColor } = useApp()
 
   // Helper pour les boîtes stylisées
@@ -57,6 +58,27 @@ const ScoreView = ({ wpm = 0, accuracy = 100, progress = 0 }) => {
         </div>
       </StatBox>
 
+      {/* ── ELAPSED + STREAK ── */}
+      <StatBox label="Race_Clock" value={formatDuration(elapsedMs)} sub="Elapsed">
+        <div className="flex gap-1.5 mt-2 items-center">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="h-1.5 w-4 transition-all duration-200"
+              style={{
+                backgroundColor: i < combo ? (playerColor || '#0ea5e9') : undefined,
+                boxShadow: i < combo ? `0 0 8px ${playerColor}` : 'none',
+              }}
+            >
+              {i >= combo && <div className="h-full w-full bg-slate-300 dark:bg-white/5" />}
+            </div>
+          ))}
+          <span className={`font-mono text-[8px] font-black uppercase italic ml-1 ${combo > 0 ? 'text-amber-500' : 'text-slate-400'}`}>
+            {combo > 0 ? `Streak ×${combo}` : 'No_Streak'}
+          </span>
+        </div>
+      </StatBox>
+
       {/* ── ACCURACY ── */}
       <StatBox 
         label="Accuracy_Rating" 
@@ -79,7 +101,7 @@ const ScoreView = ({ wpm = 0, accuracy = 100, progress = 0 }) => {
         </div>
       </StatBox>
 
-      <style jsx>{`
+      <style>{`
         @keyframes shimmer {
           from { transform: translateX(-200%); }
           to { transform: translateX(500%); }

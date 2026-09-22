@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { useApp } from '../../../shared/contexts/AppContext'
+import audio from '../../../shared/services/AudioService'
 
 const CounterView = ({ onComplete, from = 5 }) => {
   const [count, setCount] = useState(from)
   const { playerColor } = useApp()
+
+  // Bip à chaque graduation, accord montant sur le GO
+  useEffect(() => {
+    audio.countdownTick(count <= 0)
+  }, [count])
 
   useEffect(() => {
     if (count < 0) {

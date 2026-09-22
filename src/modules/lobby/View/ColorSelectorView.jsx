@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { PLAYER_COLORS } from '../../../boot/constants/index'
 import { useApp } from '../../../shared/contexts/AppContext'
+import Icon from '../../../shared/components/Icon'
 
 const ColorSelectorView = () => {
   const { playerColor, setPlayerColor } = useApp()
@@ -130,10 +131,12 @@ const ColorSelectorView = () => {
            <span>G_ADDR: 0x119</span>
            <span>B_ADDR: 0x902</span>
         </div>
-        <span className="animate-pulse">● CALIBRATION_ACTIVE</span>
+        <span className="flex items-center gap-1 animate-pulse">
+          <Icon name="dot" size={7} filled /> CALIBRATION_ACTIVE
+        </span>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes scan {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }

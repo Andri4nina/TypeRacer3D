@@ -1,24 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
+import { useApp } from '../contexts/AppContext'
 
+// Le thème est détenu par AppContext (clé `tr3d_theme`). Ce composant se
+// contentait d'en tenir une copie sous une autre clé : les deux se
+// désynchronisaient au rechargement.
 const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme')
-      return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-    return true
-  })
-
-  useEffect(() => {
-    const root = window.document.documentElement
-    if (isDark) {
-      root.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      root.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
-  }, [isDark])
+  const { theme, toggleTheme } = useApp()
+  const isDark = theme === 'dark'
+  const setIsDark = () => toggleTheme()
 
   return (
     <div className="flex flex-col items-center gap-2 group">
@@ -30,7 +19,7 @@ const ThemeToggle = () => {
       </div>
 
       <button
-        onClick={() => setIsDark(!isDark)}
+        onClick={setIsDark}
         className="relative flex items-center justify-center p-1 bg-slate-800 dark:bg-slate-950 border-2 border-slate-900 dark:border-sky-900 transition-all active:scale-95"
         style={{ clipPath: 'polygon(15% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%, 0% 15%)' }}
       > 

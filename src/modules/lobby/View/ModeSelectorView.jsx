@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useApp } from '../../../shared/contexts/AppContext'
 import { BOT_DEFS, GAME_MODES, SCREENS } from '../../../boot/constants/index'
+import Icon from '../../../shared/components/Icon'
 
 const BOTS_SORTED = [...BOT_DEFS].sort((a, b) => a.wpm - b.wpm)
 
@@ -75,7 +76,7 @@ const ModeSelectorView = () => {
           <button onClick={() => setGameMode(GAME_MODES.SOLO)} className="w-full p-4 flex items-center justify-between group">
             <div className="flex items-center gap-4">
               <div className={`p-2 border-2 ${gameMode === GAME_MODES.SOLO ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-800'} transition-colors`}>
-                <span className="text-xl">🎯</span>
+                <Icon name="target" size={20} />
               </div>
               <div className="text-left leading-none">
                 <p className="text-sm font-black uppercase text-slate-900 dark:text-white tracking-widest">Solo_Calibration</p>
@@ -104,7 +105,7 @@ const ModeSelectorView = () => {
           <button onClick={() => setGameMode(GAME_MODES.BOT_RACE)} className="w-full p-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`p-2 border-2 ${gameMode === GAME_MODES.BOT_RACE ? 'bg-amber-500 text-white' : 'bg-slate-300 dark:bg-slate-800'} transition-colors`}>
-                <span className="text-xl">🤖</span>
+                <Icon name="cpu" size={20} />
               </div>
               <div className="text-left leading-none">
                 <p className="text-sm font-black uppercase text-slate-900 dark:text-white tracking-widest">AI_Challenge</p>
@@ -147,7 +148,7 @@ const ModeSelectorView = () => {
           <button onClick={() => setGameMode(GAME_MODES.MULTIPLAYER)} className="w-full p-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`p-2 border-2 ${gameMode === GAME_MODES.MULTIPLAYER ? 'bg-indigo-500 text-white' : 'bg-slate-300 dark:bg-slate-800'} transition-colors`}>
-                <span className="text-xl">🌐</span>
+                <Icon name="globe" size={20} />
               </div>
               <div className="text-left leading-none">
                 <p className="text-sm font-black uppercase text-slate-900 dark:text-white tracking-widest">Online_Arena</p>
@@ -183,9 +184,9 @@ const ModeSelectorView = () => {
       {/* FOOTER DE SECURITÉ */}
       <footer className="mt-8 pt-4 border-t-2 border-slate-900/10 dark:border-sky-900/20 flex justify-between items-center opacity-40 font-mono text-[8px]">
         <span>// AREA_CODE: TR3D_Z01</span>
-        <div className="flex gap-2 text-sky-500 animate-pulse">
-           <span>● ENCRYPTION_ACTIVE</span>
-           <span>● SIGNAL_STABLE</span>
+        <div className="flex gap-3 text-sky-500 animate-pulse">
+           <span className="flex items-center gap-1"><Icon name="dot" size={7} filled /> ENCRYPTION_ACTIVE</span>
+           <span className="flex items-center gap-1"><Icon name="dot" size={7} filled /> SIGNAL_STABLE</span>
         </div>
       </footer>
     </div>

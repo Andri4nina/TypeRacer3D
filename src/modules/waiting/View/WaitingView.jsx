@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../shared/contexts/AppContext';
 import { SE } from '../../../shared/services/SocketService';
+import Icon from '../../../shared/components/Icon';
 
 const WaitingView = () => {
   const { roomState, socket, leaveRoom } = useApp();
@@ -63,7 +64,10 @@ const WaitingView = () => {
                         : 'border-slate-900 dark:border-sky-500/50 hover:bg-slate-900 hover:text-white dark:hover:bg-sky-500 dark:hover:text-black'
                     }`}
                 >
-                    {copied ? 'KEY_COPIED' : 'CLONE_ID'}
+                    <span className="flex items-center gap-1.5">
+                      <Icon name={copied ? 'check' : 'copy'} size={12} strokeWidth={2.5} />
+                      {copied ? 'KEY_COPIED' : 'CLONE_ID'}
+                    </span>
                 </button>
             </div>
           </div>
@@ -71,7 +75,9 @@ const WaitingView = () => {
           <div className="flex items-center gap-4 bg-slate-100 dark:bg-black/40 p-4 border-l-4 border-slate-900 dark:border-sky-500">
             <div className="text-right">
               <p className="text-3xl font-black leading-none italic tabular-nums">{players.length}</p>
-              <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Pilots_In_Grid</p>
+              <p className="flex items-center justify-end gap-1 text-[9px] text-slate-500 uppercase tracking-widest font-bold">
+                <Icon name="users" size={10} /> Pilots_In_Grid
+              </p>
             </div>
             <div className="w-10 h-10 border-2 border-dashed border-slate-300 dark:border-sky-900/50 rounded-full animate-spin-slow flex items-center justify-center">
                <div className="w-2 h-2 bg-sky-500 rounded-full" />
@@ -151,7 +157,10 @@ const WaitingView = () => {
                   onClick={handleStartRace}
                   className="group relative w-full py-6 bg-slate-900 dark:bg-sky-500 text-white dark:text-slate-950 font-black text-[14px] tracking-[0.6em] uppercase transition-all overflow-hidden border-b-8 border-black dark:border-sky-700 active:border-b-0 active:translate-y-2"
                 >
-                  <span className="relative z-10">▶ Launch_Race_Protocol</span>
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    <Icon name="play" size={16} filled strokeWidth={0} />
+                    Launch_Race_Protocol
+                  </span>
                   <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                 </button>
               ) : (
@@ -173,7 +182,7 @@ const WaitingView = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes loading {
           0% { transform: translateY(100%); }
           50% { transform: translateY(0%); }

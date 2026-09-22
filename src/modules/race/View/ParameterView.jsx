@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useApp } from '../../../shared/contexts/AppContext'
 import { BOT_DEFS, GAME_MODES } from '../../../boot/constants/index'
+import Icon from '../../../shared/components/Icon'
+import audio, { SWITCH_PROFILES, SWITCH_IDS } from '../../../shared/services/AudioService'
 
 const BOTS_SORTED = [...BOT_DEFS].sort((a, b) => a.wpm - b.wpm)
 
@@ -10,7 +12,10 @@ const ParameterView = ({ onClose, onResume, onRestart }) => {
     gameMode,
     selectedBots, setSelectedBots,
     navigate,
-    playerColor
+    playerColor,
+    soundOn, setSoundOn,
+    soundVolume, setSoundVolume,
+    switchType, setSwitchType,
   } = useApp()
 
   const isBotMode = gameMode === GAME_MODES.BOT_RACE
@@ -41,8 +46,8 @@ const ParameterView = ({ onClose, onResume, onRestart }) => {
             <span className="font-mono text-[10px] tracking-[0.4em] text-sky-500 font-black uppercase">COMMAND_MODULE</span>
             <span className="text-[8px] font-mono text-slate-400 dark:text-slate-600 uppercase mt-1 italic tracking-widest">State: PAUSE_OVERRIDE</span>
           </div>
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-slate-900 dark:bg-sky-900/20 text-white dark:text-sky-400 hover:bg-rose-600 transition-colors font-black text-xl">
-            ×
+          <button onClick={onClose} aria-label="Fermer" className="w-10 h-10 flex items-center justify-center bg-slate-900 dark:bg-sky-900/20 text-white dark:text-sky-400 hover:bg-rose-600 transition-colors">
+            <Icon name="close" size={16} strokeWidth={2.5} />
           </button>
         </header>
 
@@ -81,6 +86,68 @@ const ParameterView = ({ onClose, onResume, onRestart }) => {
                 >
                   {theme === 'dark' ? 'SUN_SYNC' : 'VOID_SYNC'}
                 </button>
+              </div>
+
+              {/* AUDIO : volume + timbre des switchs */}
+              <div className="p-4 bg-white dark:bg-black/40 border-2 border-slate-900/10 dark:border-sky-900/30 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[11px] font-black text-text uppercase tracking-wider italic">Audio_Core</p>
+                  <button
+                    onClick={() => setSoundOn(!soundOn)}
+                    className={`flex items-center gap-2 px-3 py-1.5 border-2 font-mono text-[9px] font-black uppercase transition-all
+                      ${soundOn
+                        ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10'
+                        : 'border-slate-500 text-slate-500 hover:bg-slate-500/10'}`}
+                  >
+                    <Icon name={soundOn ? 'volume' : 'volumeOff'} size={12} strokeWidth={2.5} />
+                    {soundOn ? 'On' : 'Muted'}
+                  </button>
+                </div>
+
+                <div className={soundOn ? '' : 'opacity-40 pointer-events-none'}>
+                  <label className="flex items-center gap-3">
+                    <Icon name="sliders" size={12} className="text-slate-400 shrink-0" />
+                    <input
+                      type="range"
+                      min="0" max="1" step="0.05"
+                      value={soundVolume}
+                      onChange={e => setSoundVolume(Number(e.target.value))}
+                      className="flex-1 accent-sky-500"
+                      aria-label="Volume"
+                    />
+                    <span className="font-mono text-[9px] font-black text-slate-400 w-8 text-right tabular-nums">
+                      {Math.round(soundVolume * 100)}
+                    </span>
+                  </label>
+
+                  <p className="font-mono text-[8px] text-slate-500 uppercase tracking-[0.2em] mt-4 mb-2">
+                    Switch_Profile
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SWITCH_IDS.map(id => {
+                      const p = SWITCH_PROFILES[id]
+                      const active = switchType === id
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => { setSwitchType(id); audio.setSwitch(id); audio.key() }}
+                          title={p.desc}
+                          className={`flex flex-col items-start px-2.5 py-2 border-2 transition-all
+                            ${active
+                              ? 'border-sky-500 bg-sky-500/10'
+                              : 'border-slate-300 dark:border-slate-800 hover:border-slate-500'}`}
+                        >
+                          <span className={`font-mono text-[10px] font-black uppercase ${active ? 'text-sky-500' : 'text-slate-500'}`}>
+                            {p.label}
+                          </span>
+                          <span className="font-mono text-[7px] text-slate-500 uppercase truncate w-full text-left">
+                            {p.desc}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="h-1 bg-slate-900/5 dark:bg-sky-900/20" />
@@ -136,13 +203,15 @@ const ParameterView = ({ onClose, onResume, onRestart }) => {
           <button onClick={onResume} className="group relative w-full py-4 bg-sky-500 text-slate-950 font-black font-mono text-[11px] tracking-[0.4em] uppercase shadow-[4px_4px_0px_0px_#0369a1] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all overflow-hidden">
              <div className="absolute inset-0 w-1/2 h-full bg-white/20 skew-x-[-25deg] -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
              <span className="relative z-10 flex items-center justify-center gap-2">
-               ▶_RESUME_SYNC
+               <Icon name="play" size={14} filled strokeWidth={0} />
+               RESUME_SYNC
              </span>
           </button>
 
           {onRestart && (
-            <button onClick={onRestart} className="w-full py-3 border-2 border-amber-500 text-amber-500 font-mono text-[10px] font-black uppercase tracking-widest hover:bg-amber-500/10 transition-all">
-              ↺_REBOOT_SIMULATION
+            <button onClick={onRestart} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-amber-500 text-amber-500 font-mono text-[10px] font-black uppercase tracking-widest hover:bg-amber-500/10 transition-all">
+              <Icon name="restart" size={13} strokeWidth={2.5} />
+              REBOOT_SIMULATION
             </button>
           )}
         </footer>
@@ -151,7 +220,7 @@ const ParameterView = ({ onClose, onResume, onRestart }) => {
         <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-sky-500 pointer-events-none opacity-40" />
       </div>
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: ${playerColor}; }
         @keyframes shimmer {

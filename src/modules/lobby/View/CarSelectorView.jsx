@@ -3,7 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF, Float, ContactShadows, Environment } from '@react-three/drei'
 import { useApp } from '../../../shared/contexts/AppContext'
 import { CAR_MODELS } from '../../../boot/constants/index'
-import { ProceduralCar } from '../../../shared/components/ProceduralCar'
+import { ProceduralCar } from '../../../shared/components/cars/CarModels'
+import Icon from '../../../shared/components/Icon'
 
 const GlbCar = ({ file, color, scale, offsetY }) => {
   const { scene } = useGLTF(file)
@@ -35,14 +36,14 @@ const CarPreview = ({ car, playerColor, active }) => (
       <div className="absolute inset-0 z-20 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(56,189,248,0.05),rgba(0,255,0,0.01),rgba(56,189,248,0.05))] bg-[length:100%_4px,4px_100%]" />
     )}
 
-    <Canvas camera={{ position: [0, 1.5, 4], fov: 35 }} alpha={true}>
+    <Canvas camera={{ position: [0, 1.5, 4], fov: 35 }} gl={{ alpha: true }}>
       <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} intensity={1.5} color={playerColor} />
       <Suspense fallback={null}>
         <Float speed={3} rotationIntensity={0.5} floatIntensity={0.5}>
           {car.file
             ? <GlbCar file={car.file} color={playerColor} scale={car.scale} offsetY={car.offsetY} />
-            : <ProceduralCar color={playerColor} />
+            : <ProceduralCar color={playerColor} type={car.body} />
           }
         </Float>
         <ContactShadows position={[0, -0.8, 0]} opacity={0.6} scale={10} blur={2.5} far={2} />
@@ -113,22 +114,44 @@ const CarSelectorView = () => {
                 {/* PIED DE CARTE TACTIQUE */}
                 <div className="p-4 bg-slate-900/5 dark:bg-black/40 border-t-2 border-slate-900/10 dark:border-sky-900/30">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase italic tracking-widest">
+                    <span className="flex items-center gap-2 text-[11px] font-black text-slate-900 dark:text-white uppercase italic tracking-widest">
+                      <Icon name={car.icon} size={16} className="text-sky-500" />
                       {car.name}
                     </span>
-                    <span className="text-[9px] font-mono text-sky-500">
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-sky-500">
+                      {isSelected && <Icon name="check" size={11} strokeWidth={3} />}
                       {isSelected ? 'SELECTED' : 'STBY'}
                     </span>
                   </div>
 
-                  {/* JAUGE DE CHARGEMENT / STATS */}
-                  <div className="flex gap-1 h-1.5">
-                    {[...Array(10)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`flex-1 transition-all duration-500 ${isSelected && i < 7 ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-800'}`}
-                        style={{ delay: `${i * 50}ms` }}
-                      />
+                  {/* CARACTÉRISTIQUES DU CHÂSSIS */}
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { key: 'speed',  icon: 'gauge',     label: 'SPD' },
+                      { key: 'grip',   icon: 'crosshair', label: 'GRP' },
+                      { key: 'weight', icon: 'signal',    label: 'WGT' },
+                    ].map(stat => (
+                      <div key={stat.key} className="flex items-center gap-2">
+                        <Icon name={stat.icon} size={10} className="text-slate-400 dark:text-slate-600" />
+                        <span className="font-mono text-[7px] font-black text-slate-400 w-6 text-left">{stat.label}</span>
+                        <div className="flex gap-[2px] h-1.5 flex-1">
+                          {[...Array(10)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 transition-all duration-500"
+                              style={{
+                                backgroundColor: i < car.rating[stat.key]
+                                  ? (isSelected ? playerColor : '#64748b')
+                                  : undefined,
+                              }}
+                            >
+                              {i >= car.rating[stat.key] && (
+                                <div className="h-full w-full bg-slate-300 dark:bg-slate-800" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -143,7 +166,7 @@ const CarSelectorView = () => {
         })}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes scan {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(400%); }

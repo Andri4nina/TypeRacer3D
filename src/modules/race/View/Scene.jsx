@@ -5,13 +5,15 @@ import TrackMesh from './TrackMesh'
 import Decorations from './Decorations'
 import RaceCar from './RaceCar'
 
-const Scene = ({ racers }) => {
+const Scene = ({ racers, showLabels = true, cameraMode = 'chase' }) => {
   const cameraRef = useRef()
 
   return (
     <>
+      {/* Pas d'OrbitControls ici : la caméra est pilotée par RaceCar (vue poursuite),
+          les deux entraient en conflit à chaque frame. */}
       <PerspectiveCamera ref={cameraRef} makeDefault fov={65} near={0.1} far={600} />
-
+    
       {/* Éclairage */}
       <ambientLight intensity={0.7} />
       <directionalLight
@@ -41,8 +43,14 @@ const Scene = ({ racers }) => {
           progress={racer.progress}
           color={racer.color}
           carId={racer.carId}
-          laneOffset={(i - Math.floor(racers.length / 2)) * (LANE_WIDTH * 0.9)}
+          laneOffset={(i - (racers.length + .2) / 2) * LANE_WIDTH}
           isPlayer={racer.isPlayer}
+          name={racer.name}
+          wpm={racer.wpm ?? 0}
+          showLabel={showLabels}
+          cameraMode={cameraMode}
+          boost={racer.boost ?? 0}
+          errorAt={racer.errorAt ?? 0}
           cameraRef={racer.isPlayer ? cameraRef : null}
         />
       ))}

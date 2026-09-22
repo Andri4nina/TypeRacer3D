@@ -1,13 +1,20 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { createRealSocket, SE } from '../services/SocketService'
+import { DEFAULT_CAR_ID } from '../../boot/constants/index'
+import audio from '../services/AudioService'
 
 const AppContext = createContext(null)
 
 const STORAGE_KEYS = {
   PLAYER_NAME:  'tr3d_player_name',
   PLAYER_COLOR: 'tr3d_player_color',
+  PLAYER_CAR:   'tr3d_player_car',
   THEME:        'tr3d_theme',
+  SOUND_ON:     'tr3d_sound_on',
+  SOUND_VOL:    'tr3d_sound_volume',
+  SWITCH:       'tr3d_switch',
+  CAMERA:       'tr3d_camera_mode',
 }
 
 const DEFAULT_COLOR = '#F92C44'
@@ -38,10 +45,58 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, name)
   }
 
+  // La couleur était lue au démarrage mais jamais réécrite : elle repartait
+  // toujours sur le rouge par défaut au rechargement.
+  const setPlayerColor = (color) => {
+    setPlayerColorState(color)
+    localStorage.setItem(STORAGE_KEYS.PLAYER_COLOR, color)
+  }
+
   // ── Jeu & Bots ────────────────────────────────────────────
   const [gameMode, setGameMode] = useState(null)
   const [selectedBots, setSelectedBots] = useState([])
-  const [selectedCar, setSelectedCar] = useState('default')
+  const [selectedCar, setSelectedCar] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.PLAYER_CAR) || DEFAULT_CAR_ID
+  )
+  const selectCar = (id) => {
+    setSelectedCar(id)
+    localStorage.setItem(STORAGE_KEYS.PLAYER_CAR, id)
+  }
+
+  // ── Audio ─────────────────────────────────────────────────
+  const [soundOn, setSoundOnState] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.SOUND_ON) !== 'off'
+  )
+  const [soundVolume, setSoundVolumeState] = useState(
+    () => Number(localStorage.getItem(STORAGE_KEYS.SOUND_VOL) ?? 0.6)
+  )
+  const [switchType, setSwitchTypeState] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.SWITCH) || 'brown'
+  )
+
+  useEffect(() => {
+    audio.setEnabled(soundOn)
+    localStorage.setItem(STORAGE_KEYS.SOUND_ON, soundOn ? 'on' : 'off')
+  }, [soundOn])
+
+  useEffect(() => {
+    audio.setVolume(soundVolume)
+    localStorage.setItem(STORAGE_KEYS.SOUND_VOL, String(soundVolume))
+  }, [soundVolume])
+
+  useEffect(() => {
+    audio.setSwitch(switchType)
+    localStorage.setItem(STORAGE_KEYS.SWITCH, switchType)
+  }, [switchType])
+
+  // ── Caméra ────────────────────────────────────────────────
+  const [cameraMode, setCameraModeState] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.CAMERA) || 'chase'
+  )
+  const setCameraMode = (mode) => {
+    setCameraModeState(mode)
+    localStorage.setItem(STORAGE_KEYS.CAMERA, mode)
+  }
 
   // ── Initialisation Socket ─────────────────────────────────
   useEffect(() => {
@@ -57,6 +112,12 @@ export const AppProvider = ({ children }) => {
 
         s.on(SE.ROOM_UPDATE, (newState) => {
           setRoomState(newState)
+          // Rematch : le serveur a remis la room en attente. On ramène tout le
+          // monde sur l'écran d'attente pour que l'hôte puisse relancer — et
+          // pour que RaceView soit démonté, ce qui purge son état de course.
+          if (newState?.status === 'waiting') {
+            setCurrentPage('waiting')
+          }
         })
 
         s.on(SE.RACE_START, () => {
@@ -104,10 +165,14 @@ export const AppProvider = ({ children }) => {
       currentPage, navigate,
       theme, toggleTheme,
       playerName, setPlayerName,
-      playerColor, setPlayerColor: setPlayerColorState,
+      playerColor, setPlayerColor,
       gameMode, setGameMode,
       selectedBots, setSelectedBots,
-      selectedCar, setSelectedCar,
+      selectedCar, setSelectedCar: selectCar,
+      soundOn, setSoundOn: setSoundOnState,
+      soundVolume, setSoundVolume: setSoundVolumeState,
+      switchType, setSwitchType: setSwitchTypeState,
+      cameraMode, setCameraMode,
       createRoom,
       joinRoom,
       leaveRoom,
